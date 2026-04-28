@@ -3,160 +3,414 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>环境监测面板</title>
+  <title>智能嵌入式检测系统</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     :root {
-      --bg: #0f172a;
-      --card-bg: #1e293b;
-      --text: #f1f5f9;
-      --accent: #38bdf8;
+      --bg: #f0f4f8;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --accent: #2563eb;
+      --sub: #64748b;
+      --border: #e2e8f0;
+      --shadow: 0 4px 12px rgba(0,0,0,0.04);
+      --hover-shadow: 0 8px 24px rgba(0,0,0,0.08);
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       background: var(--bg);
-      font-family: 'Segoe UI', system-ui, sans-serif;
       color: var(--text);
       padding: 16px;
       min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
-    h1 {
-      text-align: center;
-      font-weight: 600;
-      margin-bottom: 16px;
-      color: white;
+    .container {
+      max-width: 960px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
     }
+    /* 头部 */
+    .header {
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 20px 24px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.5px;
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      font-size: 0.95rem;
+      color: var(--sub);
+    }
+    .time {
+      font-weight: 500;
+    }
+    .env-info {
+      display: flex;
+      gap: 16px;
+    }
+    .env-info span {
+      background: #f1f5f9;
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+    /* 传感器网格 */
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 16px;
     }
     .card {
       background: var(--card-bg);
-      border-radius: 16px;
-      padding: 16px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+      transition: all 0.2s ease;
+      cursor: pointer;
+      border: 1px solid var(--border);
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--hover-shadow);
     }
     .card h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--sub);
       margin-bottom: 8px;
-      font-weight: 500;
-      color: var(--accent);
     }
-    .value {
-      font-size: 2.5rem;
+    .card .value {
+      font-size: 2.2rem;
       font-weight: 700;
     }
-    canvas { width: 100% !important; height: auto !important; max-height: 180px; }
-    .footer {
+    .card .unit {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--sub);
+      margin-left: 4px;
+    }
+    .card .range-bar {
+      margin-top: 10px;
+      width: 100%;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .card .range-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.4s;
+    }
+    /* 弹窗 */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15,23,42,0.5);
+      backdrop-filter: blur(2px);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+    .modal {
+      background: white;
+      border-radius: 24px;
+      width: 100%;
+      max-width: 600px;
+      max-height: 80vh;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      overflow-y: auto;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-header h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 1.8rem;
+      cursor: pointer;
+      color: var(--sub);
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f1f5f9;
+    }
+    .modal-value {
+      font-size: 3rem;
+      font-weight: 700;
       text-align: center;
-      margin-top: 20px;
-      font-size: 0.8rem;
-      opacity: 0.6;
+    }
+    .modal canvas {
+      width: 100% !important;
+      height: auto !important;
+      max-height: 250px;
+    }
+    .download-btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.2s;
+    }
+    .download-btn:hover {
+      background: #1d4ed8;
+    }
+    /* 响应式 */
+    @media (max-width: 600px) {
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      .header-right {
+        flex-wrap: wrap;
+        gap: 12px;
+      }
     }
   </style>
 </head>
 <body>
-  <h1>🌿 环境监测面板</h1>
-  <div class="grid" id="dashboard"></div>
-  <div class="footer">数据来源: OneNET</div>
+  <div class="container">
+    <!-- 头部：标题 + 时间 + 温湿度 -->
+    <div class="header">
+      <h1>🌿 智能嵌入式检测系统</h1>
+      <div class="header-right">
+        <div class="time" id="liveTime">--:--:--</div>
+        <div class="env-info">
+          <span id="headTemp">🌡️ --°C</span>
+          <span id="headHumi">💧 --%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 传感器卡片区域 -->
+    <div class="grid" id="dashboard"></div>
+  </div>
+
+  <!-- 详情弹窗 -->
+  <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+    <div class="modal" id="modalBox" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2 id="modalTitle"></h2>
+        <button class="close-btn" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-value" id="modalValue"></div>
+      <canvas id="modalChart"></canvas>
+      <button class="download-btn" id="downloadBtn">📥 下载历史数据 (CSV)</button>
+    </div>
+  </div>
 
   <script>
-    const WORKER_URL = 'https://esp32.ridiculouslose.workers.dev/'; // 替换成你的 Worker URL
+    // ==================== 配置 ====================
+    const WORKER_URL = 'https://esp32.ridiculouslose.workers.dev/';  // 改成你的 Worker URL
+
     const PROPERTIES = [
-  { id: 'co2',     name: 'CO₂',      unit: 'ppm',   color: '#4ade80', max: 3000 },
-  { id: 'temp',    name: '温度',     unit: '°C',    color: '#fb923c', max: 50 },
-  { id: 'humi',    name: '湿度',     unit: '%',     color: '#60a5fa', max: 100 },
-  { id: 'pm2_5',   name: 'PM2.5',    unit: 'µg/m³', color: '#fbbf24', max: 500 },
-  { id: 'tvoc',    name: 'TVOC (SGP)', unit: 'ppb', color: '#e879f9', max: 2000 },
-  { id: 'nh3',     name: 'NH₃',      unit: 'ppm',   color: '#f87171', max: 10 },
-  { id: 'benzene', name: '苯',       unit: 'ppm',   color: '#fdba74', max: 10 }
-];
+      { id: 'co2',     name: 'CO₂',      unit: 'ppm',   color: '#16a34a', max: 3000 },
+      { id: 'temp',    name: '温度',     unit: '°C',    color: '#ea580c', max: 50 },
+      { id: 'humi',    name: '湿度',     unit: '%',     color: '#2563eb', max: 100 },
+      { id: 'pm2_5',   name: 'PM2.5',    unit: 'µg/m³', color: '#ca8a04', max: 500 },
+      { id: 'tvoc',    name: 'TVOC (SGP)', unit: 'ppb', color: '#9333ea', max: 2000 },
+      { id: 'nh3',     name: 'NH₃',      unit: 'ppm',   color: '#dc2626', max: 10 },
+      { id: 'benzene', name: '苯',       unit: 'ppm',   color: '#d97706', max: 10 }
+    ];
+
+    // 历史数据存储（每个属性保留最多 50 个点用于图表）
+    const maxHistory = 50;
+    const history = {};
+    PROPERTIES.forEach(p => { history[p.id] = []; });
 
     let charts = {};
-    let history = {};
+    let modalChart = null;
+    let currentModalProp = null;
 
-    function initDashboard() {
+    // ==================== 创建卡片 ====================
+    function createCards() {
       const grid = document.getElementById('dashboard');
       PROPERTIES.forEach(prop => {
-        // 卡片结构
         const card = document.createElement('div');
         card.className = 'card';
+        card.onclick = () => openModal(prop);
         card.innerHTML = `
-          <h3>${prop.name} <span style="font-size:0.8rem;opacity:0.7">${prop.unit}</span></h3>
-          <div class="value" id="val-${prop.id}" style="color:${prop.color}">--</div>
-          <canvas id="chart-${prop.id}"></canvas>
+          <h3>${prop.name}</h3>
+          <div>
+            <span class="value" id="val-${prop.id}" style="color:${prop.color}">--</span>
+            <span class="unit">${prop.unit}</span>
+          </div>
+          <div class="range-bar">
+            <div class="range-fill" id="bar-${prop.id}" style="width:0%; background:${prop.color}"></div>
+          </div>
         `;
         grid.appendChild(card);
-
-        // 初始化图表
-        const ctx = document.getElementById(`chart-${prop.id}`).getContext('2d');
-        charts[prop.id] = new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: [],
-            datasets: [{
-              label: prop.name,
-              data: [],
-              borderColor: prop.color,
-              backgroundColor: prop.color + '20',
-              fill: true,
-              tension: 0.4,
-              pointRadius: 0
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-              y: {
-                suggestedMin: 0,
-                suggestedMax: prop.max,
-                grid: { color: '#334155' },
-                ticks: { color: '#94a3b8' }
-              },
-              x: {
-                display: false
-              }
-            },
-            plugins: {
-              legend: { display: false }
-            }
-          }
-        });
-        
-        history[prop.id] = [];
       });
     }
 
+    // ==================== 更新数据 ====================
     async function fetchData() {
-      const props = PROPERTIES.map(p => p.id).join(',');
-      const url = `${WORKER_URL}/data?properties=${props}`;
       try {
-        const resp = await fetch(url);
+        const resp = await fetch(WORKER_URL);
         const data = await resp.json();
-        const now = new Date().toLocaleTimeString();
+        const now = new Date();
+
+        // 更新时间
+        document.getElementById('liveTime').textContent = now.toLocaleTimeString('zh-CN', { hour12: false });
 
         for (const prop of PROPERTIES) {
-          const value = data[prop.id] !== undefined ? data[prop.id] : 0;
-          document.getElementById(`val-${prop.id}`).textContent = 
-            prop.id === 'tvoc' ? value.toFixed(0) : value.toFixed(1);
+          const val = data[prop.id] !== null && data[prop.id] !== undefined ? Number(data[prop.id]) : 0;
+          const el = document.getElementById(`val-${prop.id}`);
+          if (el) el.textContent = prop.id === 'tvoc' ? val.toFixed(0) : val.toFixed(1);
 
-          history[prop.id].push({ x: now, y: value });
-          if (history[prop.id].length > 20) history[prop.id].shift();
+          // 进度条
+          const bar = document.getElementById(`bar-${prop.id}`);
+          if (bar) bar.style.width = Math.min(100, (val / prop.max) * 100) + '%';
 
-          const chart = charts[prop.id];
-          chart.data.labels = history[prop.id].map(d => d.x);
-          chart.data.datasets[0].data = history[prop.id].map(d => d.y);
-          chart.update('none');
+          // 存储历史（用于弹窗图表）
+          history[prop.id].push({ x: now, y: val });
+          if (history[prop.id].length > maxHistory) history[prop.id].shift();
         }
-      } catch (e) {
-        console.error('获取数据失败', e);
+
+        // 更新头部温湿度
+        document.getElementById('headTemp').textContent = `🌡️ ${data.temp?.toFixed(1) || '--'}°C`;
+        document.getElementById('headHumi').textContent = `💧 ${data.humi?.toFixed(1) || '--'}%`;
+
+      } catch (err) {
+        console.error('获取数据失败', err);
       }
     }
 
-    initDashboard();
+    // ==================== 弹窗逻辑 ====================
+    function openModal(prop) {
+      currentModalProp = prop;
+      document.getElementById('modalOverlay').classList.add('active');
+      document.getElementById('modalTitle').textContent = prop.name;
+      updateModal();
+    }
+
+    function closeModal(event) {
+      if (event && event.target !== document.getElementById('modalOverlay')) return;
+      document.getElementById('modalOverlay').classList.remove('active');
+      if (modalChart) {
+        modalChart.destroy();
+        modalChart = null;
+      }
+      currentModalProp = null;
+    }
+
+    function updateModal() {
+      if (!currentModalProp) return;
+      const prop = currentModalProp;
+      const lastVal = history[prop.id].length > 0 ? history[prop.id][history[prop.id].length-1].y : 0;
+      document.getElementById('modalValue').innerHTML = 
+        `<span style="color:${prop.color}">${prop.id==='tvoc' ? lastVal.toFixed(0) : lastVal.toFixed(1)}</span> <span style="font-size:1rem; color:#64748b;">${prop.unit}</span>`;
+
+      const ctx = document.getElementById('modalChart').getContext('2d');
+      if (modalChart) modalChart.destroy();
+      modalChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: history[prop.id].map(d => d.x.toLocaleTimeString('zh-CN', { hour12: false })),
+          datasets: [{
+            label: prop.name,
+            data: history[prop.id].map(d => d.y),
+            borderColor: prop.color,
+            backgroundColor: prop.color + '20',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              suggestedMin: 0,
+              suggestedMax: prop.max,
+              grid: { color: '#e2e8f0' },
+              ticks: { color: '#64748b' }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { color: '#94a3b8', maxTicksLimit: 8 }
+            }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    // 下载 CSV（弹窗内的历史数据）
+    document.getElementById('downloadBtn').addEventListener('click', () => {
+      if (!currentModalProp) return;
+      const prop = currentModalProp;
+      const rows = history[prop.id];
+      if (rows.length === 0) {
+        alert('暂无历史数据');
+        return;
+      }
+      let csv = 'Time,Value\n';
+      rows.forEach(d => {
+        csv += `${d.x.toISOString()},${d.y}\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${prop.id}_history.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // ==================== 启动 ====================
+    createCards();
     fetchData();
-    setInterval(fetchData, 5000); // 每5秒刷新
+    setInterval(fetchData, 5000);  // 每5秒刷新
+
+    // 弹窗打开后也要持续更新
+    setInterval(() => {
+      if (currentModalProp) updateModal();
+    }, 5000);
+
+    // 实时时间每秒更新
+    setInterval(() => {
+      document.getElementById('liveTime').textContent = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+    }, 1000);
   </script>
 </body>
 </html>
