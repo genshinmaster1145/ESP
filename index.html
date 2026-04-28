@@ -63,14 +63,14 @@
   <script>
     const WORKER_URL = 'https://esp32.ridiculouslose.workers.dev/'; // 替换成你的 Worker URL
     const PROPERTIES = [
-      { id: 'co2',     name: 'CO₂',      unit: 'ppm',   color: '#4ade80', max: 3000 },
-      { id: 'temp',    name: '温度',     unit: '°C',    color: '#fb923c', max: 50 },
-      { id: 'humi',    name: '湿度',     unit: '%',     color: '#60a5fa', max: 100 },
-      { id: 'pm2_5',   name: 'PM2.5',    unit: 'µg/m³', color: '#fbbf24', max: 500 },
-      { id: 'tvoc',    name: 'TVOC (SGP)', unit: 'ppb', color: '#e879f9', max: 2000 },
-      { id: 'nh3',     name: 'NH₃',      unit: 'ppm',   color: '#f87171', max: 10 },
-      { id: 'benzene', name: '苯',       unit: 'ppm',   color: '#fdba74', max: 10 }
-    ];
+  { id: 'co2',     name: 'CO₂',      unit: 'ppm',   color: '#4ade80', max: 3000 },
+  { id: 'temp',    name: '温度',     unit: '°C',    color: '#fb923c', max: 50 },
+  { id: 'humi',    name: '湿度',     unit: '%',     color: '#60a5fa', max: 100 },
+  { id: 'pm2_5',   name: 'PM2.5',    unit: 'µg/m³', color: '#fbbf24', max: 500 },
+  { id: 'tvoc',    name: 'TVOC (SGP)', unit: 'ppb', color: '#e879f9', max: 2000 },
+  { id: 'nh3',     name: 'NH₃',      unit: 'ppm',   color: '#f87171', max: 10 },
+  { id: 'benzene', name: '苯',       unit: 'ppm',   color: '#fdba74', max: 10 }
+];
 
     let charts = {};
     let history = {};
