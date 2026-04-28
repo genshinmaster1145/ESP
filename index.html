@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>环境监测面板</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --text: #f1f5f9;
+      --accent: #38bdf8;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: var(--text);
+      padding: 16px;
+      min-height: 100dvh;
+    }
+    h1 {
+      text-align: center;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: white;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+    .card h3 {
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: var(--accent);
+    }
+    .value {
+      font-size: 2.5rem;
+      font-weight: 700;
+    }
+    canvas { width: 100% !important; height: auto !important; max-height: 180px; }
+    .footer {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 0.8rem;
+      opacity: 0.6;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌿 环境监测面板</h1>
+  <div class="grid" id="dashboard"></div>
+  <div class="footer">数据来源: OneNET</div>
+
+  <script>
+    const WORKER_URL = 'https://esp32.ridiculouslose.workers.dev/'; // 替换成你的 Worker URL
+    const PROPERTIES = [
+      { id: 'co2',     name: 'CO₂',      unit: 'ppm',   color: '#4ade80', max: 3000 },
+      { id: 'temp',    name: '温度',     unit: '°C',    color: '#fb923c', max: 50 },
+      { id: 'humi',    name: '湿度',     unit: '%',     color: '#60a5fa', max: 100 },
+      { id: 'pm2_5',   name: 'PM2.5',    unit: 'µg/m³', color: '#fbbf24', max: 500 },
+      { id: 'tvoc',    name: 'TVOC (SGP)', unit: 'ppb', color: '#e879f9', max: 2000 },
+      { id: 'nh3',     name: 'NH₃',      unit: 'ppm',   color: '#f87171', max: 10 },
+      { id: 'benzene', name: '苯',       unit: 'ppm',   color: '#fdba74', max: 10 }
+    ];
+
+    let charts = {};
+    let history = {};
+
+    function initDashboard() {
+      const grid = document.getElementById('dashboard');
+      PROPERTIES.forEach(prop => {
+        // 卡片结构
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <h3>${prop.name} <span style="font-size:0.8rem;opacity:0.7">${prop.unit}</span></h3>
+          <div class="value" id="val-${prop.id}" style="color:${prop.color}">--</div>
+          <canvas id="chart-${prop.id}"></canvas>
+        `;
+        grid.appendChild(card);
+
+        // 初始化图表
+        const ctx = document.getElementById(`chart-${prop.id}`).getContext('2d');
+        charts[prop.id] = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: [],
+            datasets: [{
+              label: prop.name,
+              data: [],
+              borderColor: prop.color,
+              backgroundColor: prop.color + '20',
+              fill: true,
+              tension: 0.4,
+              pointRadius: 0
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                suggestedMin: 0,
+                suggestedMax: prop.max,
+                grid: { color: '#334155' },
+                ticks: { color: '#94a3b8' }
+              },
+              x: {
+                display: false
+              }
+            },
+            plugins: {
+              legend: { display: false }
+            }
+          }
+        });
+        
+        history[prop.id] = [];
+      });
+    }
+
+    async function fetchData() {
+      const props = PROPERTIES.map(p => p.id).join(',');
+      const url = `${WORKER_URL}/data?properties=${props}`;
+      try {
+        const resp = await fetch(url);
+        const data = await resp.json();
+        const now = new Date().toLocaleTimeString();
+
+        for (const prop of PROPERTIES) {
+          const value = data[prop.id] !== undefined ? data[prop.id] : 0;
+          document.getElementById(`val-${prop.id}`).textContent = 
+            prop.id === 'tvoc' ? value.toFixed(0) : value.toFixed(1);
+
+          history[prop.id].push({ x: now, y: value });
+          if (history[prop.id].length > 20) history[prop.id].shift();
+
+          const chart = charts[prop.id];
+          chart.data.labels = history[prop.id].map(d => d.x);
+          chart.data.datasets[0].data = history[prop.id].map(d => d.y);
+          chart.update('none');
+        }
+      } catch (e) {
+        console.error('获取数据失败', e);
+      }
+    }
+
+    initDashboard();
+    fetchData();
+    setInterval(fetchData, 5000); // 每5秒刷新
+  </script>
+</body>
+</html>
